@@ -1,0 +1,18 @@
+{
+  "name": "ontrackretail",
+  "version": "1.0.0",
+  "description": "",
+  "main": "/src/ScenarioA.ts",
+  "scripts": {
+    "start": "npm run build:live",
+    "build:live": "nodemon --exec ./node_modules/.bin/ts-node -- ./src/ScenarioA.ts"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^9.6.0",
+    "nodemon": "^1.17.2",
+    "ts-node": "^5.0.1",
+    "typescript": "^2.7.2"
+  }
+}
