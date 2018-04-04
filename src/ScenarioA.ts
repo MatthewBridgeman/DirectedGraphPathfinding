@@ -1,5 +1,12 @@
+// Completed route class, holds the route array and distance of each route
 class Route {
-    constructor(station: string, distance: number) { }
+    route: string[];
+    distance: number;
+
+    constructor(route: string[], distance: number) {
+        this.route = route;
+        this.distance = distance;
+    }
 }
 
 import fs = require('fs');
@@ -10,7 +17,9 @@ var input = JSON.parse(fs.readFileSync("./src/input.json").toString()); // Impor
 // The main output
 console.log("Input : \n" + input + "\n");
 loadData();
-console.log("Output : \n" + outputAnswers());
+console.log("Output : \n" + answerQuestions());
+
+
 
 // Loads the JSON data into objects
 function loadData() {
@@ -21,7 +30,7 @@ function loadData() {
         let routeDistance = +input[i].charAt(2); // The + is an easy way to force the string to be a number
 
         // If the station's key hasn't been made yet, initialise the routes array
-        if (stations[stationName] == null) {
+        if (stations[stationName] === undefined) {
             stations[stationName] = {};
         }
         // Set the distination for the route
@@ -29,225 +38,134 @@ function loadData() {
     }
 }
 
-// Outputs the answers
-function outputAnswers() {
+// Returns the answers to the questions
+function answerQuestions() {    
+    let answer1 = getDistanceForRoute(['A', 'B', 'C']); // Find the distance of the trip A-B-C   
+    let answer2 = getDistanceForRoute(['A', 'E', 'B', 'C', 'D']); // Find the distance of the trip A-E-B-C-D   
+    let answer3 = getDistanceForRoute(['A', 'E', 'D']); // Find the distance of the trip A-E-D    
+    let answer4 = getRoutesWithXStations('A', 'C', 5); // Find the number of trips starting at A and ending at C making exactly 4 stops (5 stations including the origin).    
+    let answer5 = getShortestRoute('B', 'B', 30); // Find the length of the shortest route (in terms of distance to travel) from B to B.    
+    let answer6 = getRoutesWithMaxDistance('C', 'C', 30); // Find the number of different routes from C to C with a distance of less than 30. 
+
     let output = `{
-    "1": ${solveQ1()}
-    "2": ${solveQ2()}
-    "3": ${solveQ3()}
-    "4": ${solveQ4()}
-    "5": ${solveQ5()}
-    "6": ${solveQ6()}
+    "1": ${answer1}
+    "2": ${answer2}
+    "3": ${answer3}
+    "4": ${answer4}
+    "5": ${answer5}
+    "6": ${answer6}
 }`
+
     return output;
 }
 
-// Find the distance of the trip A-B-C
-function solveQ1() {
-    if ((stations['A'] != null) && (stations['B'] != null)) { //Check if the starting stations exist
-        if ((stations['A']['B'] != null) && (stations['B']['C'] != null)) { // Check if the destinations for the starting stations exist
-            let distanceAB: number = stations['A']['B'];
-            let distanceBC: number = stations['B']['C'];
-            let totalDistance = distanceAB + distanceBC
-            return totalDistance; // Return the answer
-        } else {
-            return 'null'; // Routes do not exist for station, return null
+// Finds the distance for the route provided
+function getDistanceForRoute(route: string[]) {
+    let distance = null;
+    let routes = calculateRoute(route[0], route[route.length - 1], 'MaxStations', route.length); // Calculate the routes from the begging to end station with a maximum station count of the route length
+    if (routes !== null) {
+        for (let i = 0; i < routes.length; i++) { // Loop through the routes we calculated
+            if (JSON.stringify(routes[i].route) === JSON.stringify(route)) { // Convert the arrays to json for easy comparing, and check if the route is the one we are looking for
+                distance = routes[i].distance; // Set the answer to the routes distance
+            }
         }
-    } else {
-        return 'null'; // Stations do not exist, return null
     }
+    return distance;
 }
 
-// Find the distance of the trip A-E-B-C-D
-function solveQ2() {
-    if ((stations['A'] != null) && (stations['E'] != null) && (stations['B'] != null) && (stations['C'] != null)) { //Check if the starting stations exist
-        if ((stations['A']['E'] != null) && (stations['E']['B'] != null) && (stations['B']['C'] != null) && (stations['C']['D'] != null)) { // Check if the destinations for the starting stations exist
-            let distanceAE: number = stations['A']['E'];
-            let distanceEB: number = stations['E']['B'];
-            let distanceBC: number = stations['B']['C'];
-            let distanceCD: number = stations['C']['D'];
-            let totalDistance = distanceAE + distanceEB + distanceBC + distanceCD;
-            return totalDistance; // Return the answer
-        } else {
-            return 'null'; // Routes do not exist for station, return null
+// Finds the routes betwen station A and station B with exactly the amount of stations asked for
+function getRoutesWithXStations(stationA: string, stationB: string, maxStations: number) {
+    let routeCount = 0;
+    let routes = calculateRoute(stationA, stationB, 'MaxStations', maxStations); // Calculate the routes from begging to end station with a maximum station count provided
+    if (routes !== null) {
+        for (let i = 0; i < routes.length; i++) { // Loop through the routes we calculated
+            if (routes[i].route.length == maxStations) { // Check if the number of stations in the array is the max stations allowed
+                routeCount++; // Increment the answer by 1
+            }
         }
-    } else {
-        return 'null'; // Stations do not exist, return null
     }
+    return routeCount;
 }
 
-// Find the distance of the trip A-E-D
-function solveQ3() {
-    if ((stations['A'] != null) && (stations['E'] != null)) { //Check if the starting stations exist
-        if ((stations['A']['E'] != null) && (stations['E']['D'] != null)) { // Check if the destinations for the starting stations exist
-            let distanceAE: number = stations['A']['E'];
-            let distanceED: number = stations['E']['D'];
-            let totalDistance = distanceAE + distanceED;
-            return totalDistance; // Return the answer
-        } else {
-            return 'null'; // Routes do not exist for station, return null
+// Finds the shortest route betwen station A and station B. A maximum distance to check for is needed to ensure the route calculator doesn't loop forever (This could be fixed with some extra logic)
+function getShortestRoute(stationA: string, stationB: string, maxDistance: number) {
+    let routes = calculateRoute(stationA, stationB, 'MaxDistance', maxDistance); // Calculate the routes from begging to end station with a maximum distance provided
+    let distance = maxDistance;
+    if (routes !== null) {
+        distance = maxDistance; // Set the distance to the one provided, which is the maximum distance we checked for
+        for (let i = 0; i < routes.length; i++) { // Loop through the routes we calculated
+            if (routes[i].distance < distance) { // Check if the distance of the route is less than the current answer
+                distance = routes[i].distance; // Set the answer to the lowest distance
+            }
         }
-    } else {
-        return 'null'; // Stations do not exist, return null
     }
+    return distance;
 }
 
-// Find the number of trips starting at A and ending at C making exactly 4 stops (5 stations including the origin).
-function solveQ4() {
-    if (stations['A'] != null) { //Check if the starting station exists
-        let tripCount = 0;
+// Gets routes betwen station A and station B with distances less than the one provided
+function getRoutesWithMaxDistance(stationA: string, stationB: string, maxDistance: number) {
+    let routes = calculateRoute(stationA, stationB, 'MaxDistance', maxDistance); // Calculate the routes from begging to end station with a maximum distance provided
+    let routeCount = 0;
+    if (routes !== null) {
+        routeCount = routes.length; // Set the answer to length of the routes array, which is the total routes we found
+    }
+    return routeCount;
+}
 
+// Take in a starting and ending station, as well as the search type and search parameters (which can be either 'MaxStations' or 'MaxDistance')
+function calculateRoute(stationA: string, stationB: string, searchType: string, searchMax: number) {
+    if ((stations[stationA] !== undefined) && (stations[stationB] !== undefined)) { //Check if the starting stations exist
         // Sets the starting station variables
-        let currentStation = 'A';
-        let trips = [[currentStation]]; 
+        let currentStation = stationA;
+        let routes = [[currentStation]];
+        let completedRoutes = [];
         let stationCount = 1;
+        let maxRoutes = false;
+ 
+        while (!maxRoutes) { // Keep going until we have found the maximum number of routes we can
+            let newRoutes = []; // Create a fresh routes array
+            let newRoute = false;
 
-        while (stationCount < 5) { // Limit the stations we check to 5
-            let newTrips = []; // Create a fresh routes array
-            for (let i = 0; i < trips.length; i++) { // Loop through all the current routes we have found
-                currentStation = trips[i][trips[i].length - 1]; // Set the current station to the last one in the route
-                for (let route in stations[currentStation]) { // Check all possible destinations from this station
-                    let newTrip = trips[i].slice(); // Copy the array of the current route
-                    newTrip.push(route); // Push the next destination to the copied array
-                    newTrips.push(newTrip); // Push this new route to a new routes array
+            for (let i = 0; i < routes.length; i++) { // Loop through all the current routes we have found
+                currentStation = routes[i][routes[i].length - 1]; // Set the current station to the last one in the route
+
+                let currentDistance = 0;
+                for (let j = 0; j < (routes[i].length - 1); j++) { // Loop through every station in the route, except the end station
+                    currentDistance += stations[routes[i][j]][routes[i][j + 1]]; // Add the distance to the current distance
+                }
+                for (let station in stations[currentStation]) { // Check all possible destinations from this station
+                    if ((searchType === 'MaxStations') || ((searchType === 'MaxDistance') && ((currentDistance + stations[currentStation][station]) < searchMax))) { // Check if the new station would not push the distance over or at the search maximum, if the search type is for distance
+                        let route = routes[i].slice(); // Copy the array of the current route
+                        route.push(station); // Push the next destination to the copied array
+                        newRoutes.push(route); // Push this new route to a new routes array
+                        newRoute = true;
+
+                        if (station == stationB) { // If the station we just added ends with the ending station
+                            let distance = currentDistance + stations[currentStation][station];
+                            let completedRoute = new Route(route, distance);
+                            completedRoutes.push(completedRoute); // Push this route to the completed routes array
+                        }
+                    }
                 }
             }
-            trips = newTrips.slice(); // Overwrite the old routes array with the new one       
-        stationCount++; // Increment the amount of stations in the routes
-        }
-
-        //console.log(trips); // Debug, prints the found trips to console
-
-        // Counts the trips we managed to find from A to C in exactly 4 stops
-        for (let i = 0; i < trips.length; i++) {
-            if (trips[i][trips[i].length - 1] == 'C') {
-                tripCount++
-            }
-        }
-
-        return tripCount; // Returns the trip count 
-        
-    } else {
-        return 'null'; // Station does not exist, return null
-    }
-}
-
-// Find the length of the shortest route (in terms of distance to travel) from B to B.
-function solveQ5() {
-    if (stations['B'] != null) { //Check if the starting station exists
-        let distance = -1;
-
-        // Sets the starting station variables
-        let currentStation = 'B';
-        let trips = [[currentStation]];
-        let stationCount = 1;
-        let stationFound = false;
-
-        while ((stationCount < 20) && !stationFound) { // Limit the stations we check to 10
-            let newTrips = []; // Create a fresh routes array
-            for (let i = 0; i < trips.length; i++) { // Loop through all the current routes we have found
-                currentStation = trips[i][trips[i].length - 1]; // Set the current station to the last one in the route
-                for (let route in stations[currentStation]) { // Check all possible destinations from this station
-                    let newTrip = trips[i].slice(); // Copy the array of the current route
-                    newTrip.push(route); // Push the next destination to the copied array
-                    newTrips.push(newTrip); // Push this new route to a new routes array
-                }
-            }
-            trips = newTrips.slice(); // Overwrite the old routes array with the new one       
+            routes = newRoutes.slice(); // Overwrite the old routes array with the new one
             stationCount++; // Increment the amount of stations in the routes
 
-
-            for (let i = 0; i < trips.length; i++) { // Loop through all the current routes we have found to check if we found B yet
-                if (trips[i][trips[i].length - 1] == 'B') { // I check for station B here because we want to make sure we've grabed every new route we could possibly have in this iteration
-                    stationFound = true;
-                }
-            }
-        }
-        if (!stationFound) {
-            return 'null'; // Route could not be found within 20 stations, assume no route can be found and return null
-        }
-
-        //console.log(trips); // Debug, prints the found trips to console
-
-        // Counts the distance for the route we managed to find from B to B
-        for (let i = 0; i < trips.length; i++) {
-            if (trips[i][trips[i].length - 1] == 'B') { // Check all routes that ended in B
-                let routeDistance = 0; 
-                for (let j = 0; j < (trips[i].length - 1); j++) { // Loop through every station in the route, except the end station
-                    routeDistance += stations[trips[i][j]][trips[i][j+1]]; // Add the distance to the route distance
-                }
-                if (distance != -1) { // If this isn't the first time setting distance
-                    if (routeDistance < distance) { // Is the route distance we found smaller than the previous distance?
-                        distance = routeDistance; // Set new shorter distance
-                    }
-                } else {
-                    distance = routeDistance;
-                }
+            // If we have reached the maximum number of stations or maximum distance with no new routes added, end while loop
+            if (((searchType === 'MaxStations') && (stationCount >= searchMax)) || ((searchType === 'MaxDistance') && !newRoute)) {
+                maxRoutes = true;
             }
         }
 
-        return distance; // Returns the trip count 
+        //console.log(completedRoutes); // Debug, prints the found routes to console
+
+        if (completedRoutes.length > 0) {
+            return completedRoutes;
+        } else {
+            return null; // No routes found, return null
+        }
 
     } else {
-        return 'null'; // Station does not exist, return null
+        return null; // Stations do not exist, return null
     }
 }
-
-// Find the number of different routes from C to C with a distance of less than 30. 
-function solveQ6() {
-    if (stations['C'] != null) { //Check if the starting station exists
-        let tripCount = 0;
-
-        // Sets the starting station variables
-        let currentStation = 'C';
-        let trips = [[currentStation]];
-        let completeTrips = [];
-        let maxRoutes = false;
-
-        while (!maxRoutes) { // Keep going until we have found the maximum number of routes we can
-            let newTrips = []; // Create a fresh routes array
-            let newStation = false;
-            for (let i = 0; i < trips.length; i++) { // Loop through all the current routes we have found
-                currentStation = trips[i][trips[i].length - 1]; // Set the current station to the last one in the route
-                if ((currentStation == 'C') && (trips[i].length != 1)) { // If the route ends in C and isn't the first station
-                    let newTrip = trips[i].slice(); // Copy the array of the current route
-                    completeTrips.push(newTrip); // Push this route to the completed routes array
-                }
-                let currentDistance = 0;
-                for (let j = 0; j < (trips[i].length - 1); j++) { // Loop through every station in the route, except the end station
-                    currentDistance += stations[trips[i][j]][trips[i][j + 1]]; // Add the distance to the current distance
-                }
-                for (let route in stations[currentStation]) { // Check all possible destinations from this station
-                    if ((currentDistance + stations[currentStation][route]) < 30) { // Check if the new station would not push the distance over 30
-                        let newTrip = trips[i].slice(); // Copy the array of the current route
-                        newTrip.push(route); // Push the next destination to the copied array
-                        newTrips.push(newTrip); // Push this new route to a new routes array
-                        newStation = true;
-                    }
-                }                
-            }
-            trips = newTrips.slice(); // Overwrite the old routes array with the new one
-
-            if (!newStation) {
-                maxRoutes = true; // If there have been no new stations found, end the while loop 
-            }
-        }
-
-        //console.log(completeTrips); // Debug, prints the found trips to console
-
-        // Counts the trips we managed to find from C to C in under 30 distance
-        for (let i = 0; i < completeTrips.length; i++) {
-            if (completeTrips[i][completeTrips[i].length - 1] == 'C') {
-                tripCount++
-            }
-        }
-
-        return tripCount; // Returns the trip count 
-
-    } else {
-        return 'null'; // Station does not exist, return null
-    }
-}
-
-
-
